@@ -55,8 +55,6 @@ pydantic==1.8.2
     #   thinc
 pyparsing==2.4.7
     # via packaging
-pytorch==1.0.2
-    # via -r requirements.in
 requests==2.26.0
     # via
     #   spacy
@@ -74,7 +72,9 @@ srsly==2.4.1
 thinc==8.0.8
     # via spacy
 torch==1.9.0
-    # via torchtext
+    # via
+    #   -r requirements.in
+    #   torchtext
 torchtext==0.10.0
     # via -r requirements.in
 tqdm==4.61.2
