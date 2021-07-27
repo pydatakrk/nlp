@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # ---
 # jupyter:
 #   jupytext:
@@ -53,37 +54,58 @@ assert len(text_field.vocab) == 25_002
 # text_field.vocab.stoi['though'] -> 186
 
 # %%
+text_field.vocab.itos[:10]
+
+# %%
 zz = [len(x.text) for x in train_set]
 
 import matplotlib.pyplot as plt
 
 plt.hist(zz, bins=100, density=1)
 
- # %%
- # data.BucketIterator??
-
 # %%
 len(max(train_set, key=lambda x: len(x.text)).text)
 
 # but we can do better!
-bb = data.BucketIterator(train_set, batch_size=64, device=device, sort_key=lambda x: len(x.text), sort=True)
-bb2 = [x for x in bb]
+train_buckets, valid_buckets, test_buckets = data.BucketIterator.splits(
+    (train_set, valid_set, test), batch_size=64, device=device
+)
 
 # %%
-# data.BucketIterator??
+from torch import nn
+
+
+class NLPModule(nn.Module):
+    def __init__(self, num_embedding, embedding_dim, hidden_size, out_features):
+        # before parent
+        super().__init__()
+        # after parent
+        # warstwa osadzeń/osadzanie(?) embedding
+        # wektory w przestrzeni znaczeniowej słów
+        self.embedding = nn.Embedding(num_embedding, embedding_dim)
+
+        self.rnn = nn.RNN(embedding_dim, hidden_size, 1)
+        self.linear = nn.Linear(hidden_size, out_features)
+
+    def forward(self, input):
+        embed_output = self.embedding(input)
+        rnn_output, hidden_output = self.rnn(embed_output)
+        # hidden_output is the same as rnn_output[-1]
+        lin_output = self.linear(hidden_output)
+
+        return lin_output
+
 
 # %%
-# bb2[0].text.numpy.apply(text_field.vocab.itos)
-import numpy
-
-# ll = lambda x: text_field.vocab.itos[x]
-# nn = numpy.vectorize(ll)
-# for ii in range(64):
-#     print(''.join(nn(bb2[0].text.numpy())[..., ii]))
-#     print()
+>>> rnn = nn.RNN(3, 2, 1)
+>>> input = torch.randn(5, 3, 3)
+>>> h0 = torch.randn(1, 3, 2)
+>>> output, hn = rnn(input, h0)
+output, hn
 
 # %%
-# # data.get_tokenizer??
-# nlp = spacy.load("en_core_web_sm")
-# gg = nlp("I am a dog in Paris! I am a cat.")
-# gg.to_json()
+>>> # an Embedding module containing 10 tensors of size 3
+>>> embedding = nn.Embedding(100, 19)
+>>> # a batch of 2 samples of 4 indices each
+>>> input = torch.LongTensor([[1,99,1,0, 4,3,2,9],[4,3,2,9, 4,3,2,9]])
+>>> embedding(input)
