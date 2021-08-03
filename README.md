@@ -24,4 +24,8 @@ Setup, install everything and load the data.
 ## Agenda
 
 2. Train the neural network
+
+
+# 4th Meetup -- 07 August 2021 20:30 CEST
+
 3. See how it works

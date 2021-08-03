@@ -23,7 +23,6 @@
 import spacy
 import torch
 import torchtext
-
 from torchtext.legacy import datasets, data
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -55,13 +54,6 @@ assert len(text_field.vocab) == 25_002
 
 # %%
 text_field.vocab.itos[:10]
-
-# %%
-zz = [len(x.text) for x in train_set]
-
-import matplotlib.pyplot as plt
-
-plt.hist(zz, bins=100, density=1)
 
 # %%
 len(max(train_set, key=lambda x: len(x.text)).text)
@@ -97,6 +89,98 @@ class NLPModule(nn.Module):
 
 
 # %%
+num_embedding = len(text_field.vocab)
+embedding_dim = 100
+hidden_size = 256
+out_features = 1
+
+# num_embedding, embedding_dim, hidden_size, out_features
+
+model = NLPModule(num_embedding, embedding_dim, hidden_size, out_features)
+
+
+# %%
+def policz(mod):
+    return sum(p.numel() for p in mod.parameters())
+
+
+policz(model)
+
+# %%
+# Stochastic gradient descent SGD
+# minimalizować funkcję kosztu (szukanie minimum)
+
+import torch.optim as optim
+
+optimiser = optim.SGD(module.parameters(), lr=1e-3)
+
+criterion = nn.BCEWithLogitsLoss()
+
+# %%
+ciretrion = criterion.to(device)
+model = model.to(device)
+
+def binary_accuracy(prediction, target):
+    prediction = F.sigmoid(prediction)
+    prediction = torch.round(prediction)
+    
+    compared = (prediction == target).float()
+    return torch.mean(compared)
+
+
+T = torch.tensor
+binary_accuracy(T([0, 0.5, .2, 0.001, 0.8]), T([0, 1, 1, 1, 1]))
+
+# %%
+import numpy as np
+
+def train(mod, data, optimiser, criterion):
+    losses = []
+    metrics = []
+    for bucket in data:
+        optimiser.zero_grad()
+        output = mod(bucket.text).squeeze(0).squeeze(1)
+        loss = criterion(output, bucket.label)
+        metric = binary_accuracy(output, bucket.label)
+        losses.append(loss.item())
+        metrics.append(metric.item())
+        loss.backward()
+        optimiser.step()
+        
+        print(np.mean(losses), losses[-1], np.mean(metrics), metrics[-1])
+        
+    return ...
+    
+train(model, train_buckets, optimiser, criterion)
+
+# %%
+import torch.nn.functional as F
+
+# Funkcja kosztu, im bliżej 1 (target) tym funkcja kosztu maleje.
+
+target = torch.ones([1, 1], dtype=torch.float32)  # 64 classes, batch size = 10
+input_ = torch.full([1, 1], 0.1)  # A prediction (logit)
+
+print(F.binary_cross_entropy_with_logits(input_, target))
+
+target = torch.ones([1, 1], dtype=torch.float32)  # 64 classes, batch size = 10
+input_ = torch.full([1, 1], 0.4)  # A prediction (logit)
+
+print(F.binary_cross_entropy_with_logits(input_, target))
+
+target = torch.ones([1, 1], dtype=torch.float32)  # 64 classes, batch size = 10
+input_ = torch.full([1, 1], 0.7)  # A prediction (logit)
+
+print(F.binary_cross_entropy_with_logits(input_, target))
+
+target = torch.ones([1, 1], dtype=torch.float32)  # 64 classes, batch size = 10
+input_ = torch.full([1, 1], 0.9)  # A prediction (logit)
+
+print(F.binary_cross_entropy_with_logits(input_, target))
+
+target, input_
+
+# %%
 >>> rnn = nn.RNN(3, 2, 1)
 >>> input = torch.randn(5, 3, 3)
 >>> h0 = torch.randn(1, 3, 2)
@@ -107,5 +191,5 @@ output, hn
 >>> # an Embedding module containing 10 tensors of size 3
 >>> embedding = nn.Embedding(100, 19)
 >>> # a batch of 2 samples of 4 indices each
->>> input = torch.LongTensor([[1,99,1,0, 4,3,2,9],[4,3,2,9, 4,3,2,9]])
+>>> input = torch.LongTensor([[1,98,1,0, 4,3,2,9],[4,3,2,9, 4,3,2,9]])
 >>> embedding(input)
