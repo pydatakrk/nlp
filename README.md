@@ -26,6 +26,15 @@ Setup, install everything and load the data.
 2. Train the neural network
 
 
-# 4th Meetup -- 07 August 2021 20:30 CEST
+# 4th Meetup -- 10 August 2021 20:30 CEST
 
-3. See how it works
+2. Train the neural network
+    2.1. Move to google collab (for training on GPU)
+
+3. See how it works, debug, etc.
+4. Improve it.
+    LSTM
+
+# 5th Meetup -- 17 August 2021 20:30 CEST
+
+5. Upgrade, upgrade, upgrade.
