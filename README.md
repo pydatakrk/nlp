@@ -45,10 +45,12 @@ Setup, install everything and load the data.
 6. Run and test the model
 
 
-# 7th meetup -- ???
+# 7th meetup -- 31 August 2021 2030 CEST
+
+New Notebook! With NLPModuleCNN
+
+
+# 8th meetup -- ???
 
 TODO:
-    New Notebook!
-
-    Multiple classes
-    Transformers
+Debug NLPModuleCNN dimenssions and start training
