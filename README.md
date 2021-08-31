@@ -38,3 +38,17 @@ Setup, install everything and load the data.
 # 5th Meetup -- 17 August 2021 20:30 CEST
 
 5. Upgrade, upgrade, upgrade.
+
+
+# 6th Meetup -- 24 August 2021 2030 CEST
+
+6. Run and test the model
+
+
+# 7th meetup -- ???
+
+TODO:
+    New Notebook!
+
+    Multiple classes
+    Transformers

@@ -53,7 +53,7 @@ assert len(text_field.vocab) == 25_002
 # text_field.vocab.itos[186] -> 'though'
 # text_field.vocab.stoi['though'] -> 186
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="6cc86523" outputId="b0be576e-3d99-4f24-c489-2f35ba9b27f0"
+# %% id="6cc86523" colab={"base_uri": "https://localhost:8080/"} outputId="18d914d0-0a1e-4da4-b706-0039bfe6dddd"
 text_field.vocab.itos[:10]
 
 # %% id="089e9316"
@@ -105,7 +105,9 @@ class NLPModuleLSTM(nn.Module):
     def forward(self, input):
         embed_output = self.embedding(input)
         lstm_output, (hidden_output1, hidden_output2) = self.lstm(embed_output)
-        drop_output = self.dropout(torch.cat((hidden_output1[-2, :, :], hidden_output1[-1, :, :]), dim=1))
+        drop_output = self.dropout(
+            torch.cat((hidden_output1[-2, :, :], hidden_output1[-1, :, :]), dim=1)
+        )
         lin_output = self.linear(drop_output)
 
         return lin_output
@@ -122,7 +124,7 @@ out_features = 1
 model = NLPModuleLSTM(num_embedding, embedding_dim, hidden_size, out_features)
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="a3c6bc10" outputId="17d6a84d-b44f-4f2d-f6c3-ed34965779b1"
+# %% id="a3c6bc10" colab={"base_uri": "https://localhost:8080/"} outputId="f63742c2-8d02-4000-b5fc-7dbb5e3c55f2"
 def policz(mod):
     return sum(p.numel() for p in mod.parameters())
 
@@ -139,24 +141,26 @@ optimiser = optim.Adam(model.parameters())
 
 criterion = nn.BCEWithLogitsLoss()
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="8058738f" outputId="7385f447-f3eb-4130-f604-acda1068a901"
+# %% id="8058738f" colab={"base_uri": "https://localhost:8080/"} outputId="674d4f22-48e4-4475-d7a8-6e39ac3ddd73"
 ciretrion = criterion.to(device)
 model = model.to(device)
+
 
 def binary_accuracy(prediction, target):
     prediction = F.sigmoid(prediction)
     prediction = torch.round(prediction)
-    
+
     compared = (prediction == target).float()
     return torch.mean(compared)
 
 
 T = torch.tensor
-binary_accuracy(T([0, 0.5, .2, 0.001, 0.8]), T([0, 1, 1, 1, 1]))
+binary_accuracy(T([0, 0.5, 0.2, 0.001, 0.8]), T([0, 1, 1, 1, 1]))
 
 # %% id="21dc8651"
 import numpy as np
 import tqdm
+
 
 def train(mod, data, optimiser, criterion):
     losses = []
@@ -174,7 +178,7 @@ def train(mod, data, optimiser, criterion):
         metrics.append(metric.item())
         loss.backward()
         optimiser.step()
-        
+
         # print(np.mean(losses), losses[-1], np.mean(metrics), metrics[-1])
 
     return losses, metrics
@@ -193,14 +197,13 @@ def validate(mod, data, criterion):
         loss = criterion(output, bucket.label)
         metric = binary_accuracy(output, bucket.label)
         losses.append(loss.item())
-        metrics.append(metric.item())        
+        metrics.append(metric.item())
         # print(np.mean(losses), losses[-1], np.mean(metrics), metrics[-1])
 
     return losses, metrics
 
 
-
-# %% colab={"base_uri": "https://localhost:8080/"} id="SDhHPvnNbKnz" outputId="c220fb89-90c7-4df1-a4e8-bfb5095bdbd4"
+# %% id="SDhHPvnNbKnz" colab={"base_uri": "https://localhost:8080/"} outputId="49534f35-db09-4d6d-c4ab-0a88fe319bf8"
 for i in range(5):
   train_losses, train_metrics = train(model, train_buckets, optimiser, criterion)
   validated_losses, validated_metrics = validate(model, valid_buckets, criterion)
@@ -210,8 +213,69 @@ for i in range(5):
   print("Validation metrics", np.mean(validated_losses), np.mean(validated_metrics))
 
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="e80feb3a" outputId="20f45c08-db1c-4bfd-a1de-6d7ad3e988d2"
+# %% id="hvMObYJGhMCG"
+tokenizer = spacy.load("en_core_web_sm")
 
+
+# %% id="2GLNb1xufMqW"
+def sentiment(model, sentence: str) -> bool:
+    tokens = tokenizer.tokenizer(sentence)
+    tokenized = [text_field.vocab.stoi[t.text] for t in tokens]
+    print("|".join(text_field.vocab.itos[t] for t in tokenized))
+    result = F.sigmoid(model(torch.LongTensor(tokenized).unsqueeze(1).to(device)))
+    print(result.to("cpu").detach().numpy().ravel(), sentence)
+
+
+# sentiment(model, "it's bad")
+# sentiment(model, "it's good")
+# sentiment(model, "it's very bad")
+# sentiment(model, "it's very good")
+# sentiment(model, "it's aweful")
+# sentiment(model, "it's awesome")
+# sentiment(model, "it's great")
+# sentiment(model, "i like this film")
+# sentiment(model, "i don't like this film")
+# sentiment(model, "it is the best movie I have ever seen")
+# sentiment(model, "it is the worst movie I have ever seen")
+# sentiment(model, "borat was the great success, i very much liked this movie, best movie ever")
+# sentiment(model, "very boring movie I didn't like it")
+
+# %% colab={"base_uri": "https://localhost:8080/"} id="iwlFk4RDlpPK" outputId="9a36c9e8-be74-4a83-e0e9-d95b25ace78d"
+shawshank = """
+Why do I want to write the 234th comment on The Shawshank Redemption? I am not sure - almost everything that could be possibly said about it has been said. But like so many other people who wrote comments, I was and am profoundly moved by this simple and eloquent depiction of hope and friendship and redemption.
+
+The only other movie I have ever seen that effects me as strongly is To Kill a Mockingbird. Both movies leave me feeling cleaner for having watched them.
+"""
+
+sentiment(model, shawshank)
+
+shawshank2 = """
+This film is nothing but one cliche after another. Having seen many of the 100's of prison films made from the early 30's to the 50's, I was able to pull almost every minute of Shawcrap from one of those films.
+
+While it is visually well made and acted, the story has every plot point of the "standard" prison film. They have the evil warden, innocent main character, friendly guilty guy, thugs and one good old prisoner. Don't waste your time on this one. Rent or buy some of the classic's of the prison genre
+"""
+sentiment(model, shawshank2)
+
+reddit = """............ . . . . . . .. ... … ...................................................................................................."""
+sentiment(model, reddit)
+
+
+schopenhauer = """
+Kant has written a treatise on _The Vital Powers_; but I should like to
+write a dirge on them, since their lavish use in the form of knocking,
+hammering, and tumbling things about has made the whole of my life a
+daily torment. Certainly there are people, nay, very many, who will
+smile at this, because they are not sensitive to noise; it is precisely
+these people, however, who are not sensitive to argument, thought,
+poetry or art, in short, to any kind of intellectual impression: a fact
+to be assigned to the coarse quality and strong texture of their brain
+tissues.
+"""
+
+sentiment(model, schopenhauer)
+
+# %% id="e80feb3a"
+sentiment(model, "great success")
 # Funkcja kosztu, im bliżej 1 (target) tym funkcja kosztu maleje.
 
 target = torch.ones([1, 1], dtype=torch.float32)  # 64 classes, batch size = 10
@@ -238,14 +302,14 @@ target, input_
 
 # %% id="Axn_JzP4YkIe"
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="dfac9f54" outputId="27f4f4a0-b984-4dfa-b0c4-ca006f882e16"
+# %% id="dfac9f54"
 >>> rnn = nn.RNN(3, 2, 1)
 >>> input = torch.randn(5, 3, 3)
 >>> h0 = torch.randn(1, 3, 2)
 >>> output, hn = rnn(input, h0)
 output, hn
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="b8440222" outputId="22a64f01-8b5d-4d21-9a5f-2475b7fcc223"
+# %% id="b8440222"
 >>> # an Embedding module containing 10 tensors of size 3
 >>> embedding = nn.Embedding(100, 19)
 >>> # a batch of 2 samples of 4 indices each
