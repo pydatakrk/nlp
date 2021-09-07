@@ -45,12 +45,6 @@ Setup, install everything and load the data.
 6. Run and test the model
 
 
-# 7th meetup -- 31 August 2021 2030 CEST
+# 07 Sep 2021 20:00 CEST
 
-New Notebook! With NLPModuleCNN
-
-
-# 8th meetup -- ???
-
-TODO:
-Debug NLPModuleCNN dimenssions and start training
+Debugging the CNN model and writing `s2` function to test the new model.

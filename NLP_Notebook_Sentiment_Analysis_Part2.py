@@ -53,7 +53,7 @@ assert len(text_field.vocab) == 25_002
 # text_field.vocab.itos[186] -> 'though'
 # text_field.vocab.stoi['though'] -> 186
 
-# %% id="6cc86523" colab={"base_uri": "https://localhost:8080/"} outputId="bfbd22be-78e2-4aea-a0a7-a9c9480c537a"
+# %% id="6cc86523" colab={"base_uri": "https://localhost:8080/"} outputId="50de35a6-48a3-4095-c237-b5c9b9717407"
 text_field.vocab.itos[:10]
 
 # %% id="089e9316"
@@ -87,18 +87,24 @@ class NLPModuleCNN(nn.Module):
         self.convo2d_0 = nn.Conv2d(1, out_channels, (kernel_size[0], embedding_dim))
         self.convo2d_1 = nn.Conv2d(1, out_channels, (kernel_size[1], embedding_dim))
         self.convo2d_2 = nn.Conv2d(1, out_channels, (kernel_size[2], embedding_dim))
+        self.pooling0 = nn.MaxPool1d(kernel_size=(99,))
+        self.pooling1 = nn.MaxPool1d(kernel_size=(98,))
+        self.pooling2 = nn.MaxPool1d(kernel_size=(94,))
+
         self.linear = nn.Linear(in_features=out_channels * 3, out_features=out_features)
         self.dropout = nn.Dropout(p=p_dropout)
 
     def forward(self, input):
-        embed = self.embedding(input)
-        c0 = F.relu(self.convo2d_0(embed))
-        c1 = F.relu(self.convo2d_1(embed))
-        c2 = F.relu(self.convo2d_2(embed))
-        c0 = F.max_pool1d(c0)
-        c1 = F.max_pool1d(c1)
-        c2 = F.max_pool1d(c2)
-        lin = self.linear(torch.cat([c0, c1, c2]))
+        embed = self.embedding(input).unsqueeze(1)
+        c0 = F.relu(self.convo2d_0(embed).squeeze(3))
+        c1 = F.relu(self.convo2d_1(embed).squeeze(3))
+        c2 = F.relu(self.convo2d_2(embed).squeeze(3))
+        c0 = self.pooling0(c0).squeeze(2)
+        c1 = self.pooling1(c1).squeeze(2)
+        c2 = self.pooling2(c2).squeeze(2)
+        cc = torch.cat([c0, c1, c2], dim=1)
+        drop = self.dropout(cc)
+        lin = self.linear(drop)
         return lin
 
 
@@ -117,12 +123,25 @@ model = NLPModuleCNN(
     pad_index=text_field.vocab.stoi[text_field.pad_token],
 )
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="S5Ke57xrsby4" outputId="e8c521ca-399c-4533-f67d-6132e977106b"
+# %% colab={"base_uri": "https://localhost:8080/"} id="O46q7-7OfUqj" outputId="85d713af-4a8c-419b-a694-77ba6ebfb338"
+model.embedding
+
+# %% id="SDhHPvnNbKnz" colab={"base_uri": "https://localhost:8080/"} outputId="b27d8bdf-7037-4109-9714-d6927e0fff84"
+for i in range(5):
+  train_losses, train_metrics = train(model, train_buckets, optimiser, criterion)
+  # validated_losses, validated_metrics = validate(model, valid_buckets, criterion)
+  
+  print()
+  print("Train metrics", np.mean(train_losses), np.mean(train_metrics))
+  # print("Validation metrics", np.mean(validated_losses), np.mean(validated_metrics))
+
+
+# %% colab={"base_uri": "https://localhost:8080/"} id="S5Ke57xrsby4" outputId="dfca9dbb-62fb-47ea-be6f-a36b356adcaf"
 pre_trained_embeddings = text_field.vocab.vectors
 model.embedding.weight.data.copy_(pre_trained_embeddings)
 
 
-# %% id="a3c6bc10" colab={"base_uri": "https://localhost:8080/"} outputId="bdb3ca18-2887-4fd5-8b0e-deebbed81fe6"
+# %% id="a3c6bc10" colab={"base_uri": "https://localhost:8080/"} outputId="f51b8956-41bc-44f9-ca2e-38fdf3602565"
 def policz(mod):
     return sum(p.numel() for p in mod.parameters())
 
@@ -139,7 +158,7 @@ optimiser = optim.Adam(model.parameters())
 
 criterion = nn.BCEWithLogitsLoss()
 
-# %% id="8058738f" colab={"base_uri": "https://localhost:8080/"} outputId="c9b718f2-9e52-475d-ab8a-427ddbc65de8"
+# %% id="8058738f" colab={"base_uri": "https://localhost:8080/"} outputId="a7982ef6-4b17-45dd-e3b8-e7f11099364d"
 ciretrion = criterion.to(device)
 model = model.to(device)
 
@@ -189,8 +208,16 @@ def validate(mod, data, criterion):
     # wyłącza akumulacje błędów (z którego korzystaliśmy w train)
     mod.eval()
 
+    i = 0
     for bucket in tqdm.tqdm(data):
+        i += 1
         output = mod(bucket.text).squeeze(0).squeeze(1)
+        output2 = F.sigmoid(output)
+        # print(" ".join(text_field.vocab.itos[t] for t in bucket.text[0]))
+        # print(f"{bucket.label[0]}")
+        # print(f"{output2[0]}")
+        # if i > 10:
+        #     break
         loss = criterion(output, bucket.label)
         metric = binary_accuracy(output, bucket.label)
         losses.append(loss.item())
@@ -201,18 +228,37 @@ def validate(mod, data, criterion):
 
 
 
-# %% id="SDhHPvnNbKnz" colab={"base_uri": "https://localhost:8080/", "height": 400} outputId="f40c362e-450e-4a12-aa2b-b6646adfa4bd"
-for i in range(5):
-  train_losses, train_metrics = train(model, train_buckets, optimiser, criterion)
-  validated_losses, validated_metrics = validate(model, valid_buckets, criterion)
-  
-  print()
-  print("Train metrics", np.mean(train_losses), np.mean(train_metrics))
-  print("Validation metrics", np.mean(validated_losses), np.mean(validated_metrics))
-
-
 # %% id="hvMObYJGhMCG"
 tokenizer = spacy.load("en_core_web_sm")
+
+# %% colab={"base_uri": "https://localhost:8080/"} id="3HJfcp5kmNln" outputId="db95b6f8-abf8-4f21-adcc-043644a93a7a"
+validated_losses, validated_metrics = validate(model, valid_buckets, criterion)
+print("Validation metrics", np.mean(validated_losses), np.mean(validated_metrics))
+
+
+# %% colab={"base_uri": "https://localhost:8080/"} id="duTnnc-OqYFd" outputId="0c91f2af-fa78-425b-bab3-10b9f762c3a6"
+def s2(model, sentence: str) -> bool:
+    tt = [t for t in sentence.split()]
+    tt = tt[:100]
+    while len(tt) < 100:
+        tt.append("<pad>")
+
+    m = F.sigmoid(model(torch.LongTensor([[text_field.vocab.stoi[t] for t in tt],]).to(device)))
+    print(sentence, m.to("cpu").detach().numpy().ravel())
+
+s2(model, "it's bad")
+s2(model, "it's good")
+s2(model, "it's very bad")
+s2(model, "it's very good")
+s2(model, "it's aweful")
+s2(model, "it's awesome")
+s2(model, "it's great")
+s2(model, "i like this film")
+s2(model, "i don't like this film")
+s2(model, "it is the best movie I have ever seen")
+s2(model, "it is the worst movie I have ever seen")
+s2(model, "borat was the great success, i very much liked this movie, best movie ever")
+s2(model, "very boring movie I didn't like it")
 
 
 # %% id="2GLNb1xufMqW"
